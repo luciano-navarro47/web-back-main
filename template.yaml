@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  web-back
+
+Globals: # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-specification-template-anatomy-globals.html
+  Function:
+    Timeout: 5
+    MemorySize: 128
+    Runtime: python3.11
+
+    Tracing: Active
+  Api:
+    TracingEnabled: true
+    
+Resources:
+  HealthCheckFunction:
+    Type: AWS::Serverless::Function     # More info about Function Resource: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html
+    Properties:
+      Handler: app.lambda_handler
+      CodeUri: src/health_check
+      Description: Health Check function
+      Architectures:
+      - x86_64
+      Tracing: Active
+      Events:
+        HealthCheckPath:
+          Type: Api           # More info about API Event Source: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-function-api.html
+          Properties:
+            Path: /health_check
+            Method: GET
+             # Powertools for AWS Lambda (Python) env vars: https://awslabs.github.io/aws-lambda-powertools-python/#environment-variables
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: PowertoolsHealthCheck
+          POWERTOOLS_METRICS_NAMESPACE: Powertools
+          LOG_LEVEL: INFO
+      Tags:
+        LambdaPowertools: python
+        
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties: 
+      Handler: src/auth/authorizer.lambda_handler
+      Description: Handler for Lambda Authorizer
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+      Layers:
+        - Ref: PyUtils
+      Events:
+        ValidateUserToken:
+          Type: Api
+          Properties:
+            Path: /users/guest
+            Method: POST
+            RestApiId: !Ref RestAPI
+      Environment:
+        Variables:
+          SECRET_KEY: secretkey123@
+
+  PyUtils:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+        LayerName: pyutils
+        Description: Shared utilities for Orders service 
+        ContentUri: src/layers/
+        CompatibleRuntimes:
+          - python3.11
+    Metadata:
+      BuildMethod: python3.11
+
+  RestAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      TracingEnabled: true
+      Tags:
+        Name: !Sub "${AWS::StackName}-API"
+        Stack: !Sub "${AWS::StackName}"
+      Auth:
+        DefaultAuthorizer: LambdaTokenAuthorizer
+        Authorizers:
+          LambdaTokenAuthorizer:
+            FunctionArn: !GetAtt AuthorizerFunction.Arn
+            Identity:
+              Headers:
+                - Authorization
+
+  ApplicationResourceGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name:
+        Fn::Sub: ApplicationInsights-SAM-${AWS::StackName}
+      ResourceQuery:
+        Type: CLOUDFORMATION_STACK_1_0
+  ApplicationInsightsMonitoring:
+    Type: AWS::ApplicationInsights::Application
+    Properties:
+      ResourceGroupName:
+        Ref: ApplicationResourceGroup
+      AutoConfigurationEnabled: 'true'
+
+Outputs:
+  HelloWorldApi:
+    Description: API Gateway endpoint URL for Prod environment for Health Check Function
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/health_check"
+
+  HealthCheckFunction:
+    Description: Health Check Lambda Function ARN
+    Value: !GetAtt HealthCheckFunction.Arn
+  
+  APIEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${RestAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+
+
