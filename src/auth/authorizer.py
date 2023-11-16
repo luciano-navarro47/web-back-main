@@ -5,11 +5,10 @@ def validate_user_token(token):
 
     if token != None:
         validated_token = verify_token(token)
-        return validated_token
     else:
         new_token = generate_jwt()
         validated_token = verify_token(new_token)
-        return validated_token 
+    return validated_token
 
 
 def lambda_handler(event: dict, context):

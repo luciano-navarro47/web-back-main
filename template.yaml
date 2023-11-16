@@ -37,6 +37,30 @@ Resources:
           LOG_LEVEL: INFO
       Tags:
         LambdaPowertools: python
+  
+  ChatBotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: new_conversation.lambda_handler
+      CodeUri: src/openai
+      Description: Handler function for openai conversations
+      Architectures:
+      - x86_64
+      Tracing: Active
+      Layers:
+        - Ref: PyUtils
+      Events:
+        ConversationWithOpenAI:
+          Type: Api
+          Properties:
+            Path: /conversations/new
+            Method: POST
+            # RestApiId: !Ref RestAPI
+      Environment:
+        Variables:
+          OPENAI_API_KEY: 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
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
         
   AuthorizerFunction:
     Type: AWS::Serverless::Function
@@ -62,7 +86,7 @@ Resources:
     Type: AWS::Serverless::LayerVersion
     Properties:
         LayerName: pyutils
-        Description: Shared utilities for Orders service 
+        Description: Shared utilities for services
         ContentUri: src/layers/
         CompatibleRuntimes:
           - python3.11
