@@ -1,0 +1,7 @@
+python-dotenv
+openai==0.28.0
+# spacy
+# spacy-loggers
+# spacy-legacy
+# numpy
+# es_core_news_sm

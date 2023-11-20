@@ -37,31 +37,33 @@ Resources:
           LOG_LEVEL: INFO
       Tags:
         LambdaPowertools: python
-  
-  ChatBotFunction:
+
+  NewConversationFunction:
     Type: AWS::Serverless::Function
     Properties:
       Handler: new_conversation.lambda_handler
-      CodeUri: src/openai
+      CodeUri: src/apiChat
       Description: Handler function for openai conversations
-      Architectures:
-      - x86_64
+      Tags:
+        Stack: !Sub "${AWS::StackName}" 
       Tracing: Active
       Layers:
-        - Ref: PyUtils
+        - Ref: ApiChat
       Events:
-        ConversationWithOpenAI:
+        CreateConversation:
           Type: Api
           Properties:
             Path: /conversations/new
             Method: POST
-            # RestApiId: !Ref RestAPI
+            RestApiId: !Ref RestAPI
       Environment:
         Variables:
-          OPENAI_API_KEY: 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
-      Tags:
-        Stack: !Sub "${AWS::StackName}"
-        
+          OPENAI_API_KEY: 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     
+    Metadata:
+      BuildMethod: python3.11
+      Dependencies:
+        - src/layers/apiChat/requirements.txt
+
   AuthorizerFunction:
     Type: AWS::Serverless::Function
     Properties: 
@@ -70,7 +72,7 @@ Resources:
       Tags:
         Stack: !Sub "${AWS::StackName}"
       Layers:
-        - Ref: PyUtils
+        - Ref: AuthLayer
       Events:
         ValidateUserToken:
           Type: Api
@@ -81,17 +83,34 @@ Resources:
       Environment:
         Variables:
           SECRET_KEY: secretkey123@
+    Metadata:
+      BuildMethod: python3.11
 
-  PyUtils:
+  ApiChat:
     Type: AWS::Serverless::LayerVersion
     Properties:
-        LayerName: pyutils
+        LayerName: ApiChatLayer
         Description: Shared utilities for services
-        ContentUri: src/layers/
+        ContentUri: src/layers/apiChat/
         CompatibleRuntimes:
           - python3.11
     Metadata:
       BuildMethod: python3.11
+      Dependencies:
+        - src/layers/apiChat/requirements.txt
+
+  AuthLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+        LayerName: authLayer
+        Description: Shared utilities for services
+        ContentUri: src/layers/auth/
+        CompatibleRuntimes:
+          - python3.11
+    Metadata:
+      BuildMethod: python3.11
+      Dependencies:
+        - src/layers/auth/requirements.txt
 
   RestAPI:
     Type: AWS::Serverless::Api
@@ -123,12 +142,11 @@ Resources:
       ResourceGroupName:
         Ref: ApplicationResourceGroup
       AutoConfigurationEnabled: 'true'
-
 Outputs:
   HelloWorldApi:
     Description: API Gateway endpoint URL for Prod environment for Health Check Function
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/health_check"
-
+  
   HealthCheckFunction:
     Description: Health Check Lambda Function ARN
     Value: !GetAtt HealthCheckFunction.Arn

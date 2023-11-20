@@ -1,3 +1,0 @@
-es_core_news_sm
-openai
-spacy
