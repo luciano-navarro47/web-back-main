@@ -58,7 +58,7 @@ Resources:
             RestApiId: !Ref RestAPI
       Environment:
         Variables:
-          OPENAI_API_KEY: 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     
+          OPENAI_API_KEY: ¡OPEN-AI API_KEY!  
     Metadata:
       BuildMethod: python3.11
       Dependencies:

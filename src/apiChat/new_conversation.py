@@ -11,12 +11,14 @@ api_key = os.getenv("OPENAI_API_KEY")
 openai.api_key = api_key
 
 def ask_chat_gpt(prompt, model="text-davinci-002"):
+
     response = openai.Completion.create(
-    engine=model,
-    prompt=prompt,
-    n=1,
-    max_tokens=150,
-    temperature=1.5
+        engine=model,
+        prompt=prompt,
+        n=1,
+        max_tokens=150,
+        temperature=1.5,
+        instructions="custom instructions here"
     )
 
     response_without_control = response.choices[0].text.strip()
@@ -25,18 +27,20 @@ def ask_chat_gpt(prompt, model="text-davinci-002"):
 
 def lambda_handler(event: dict, context):
 
-    print("EVENT: ",event)
-    print(type(event))
+    # print("EVENT: ",event)
+    # print(type(event))
     user_input = json.loads(event['body'])['user_input']
     response = ask_chat_gpt(user_input)
 
-    print("RESPONSE: \n" ,response)
+    # print("RESPONSE: " ,response)
     return {
         "statusCode": 200,
         "body": json.dumps(response),
         "isBase64Encoded": False
         
     }
+
+## OTHERS CHAT COMPLETIONS FUNCTIONALITY
 
 # previous_questions = []
 # previous_answers = []
